@@ -81,23 +81,44 @@ class Checker_Board {
 	}	
 	vector<Checker> viableJumps(Checker in){
 		vector<Checker> out;
+		if((in.type/2)==move){
+			if(in.type%2==0){
+				int dir=move*2-1;
+				if (opponentLocation(in.r+dir,in.c-1) && viableLocation(in.r+dir*2,in.c-2))
+					out.push_back(in.move(in.r+dir*2,in.c-2,(in.r==6)));
+				if (opponentLocation(in.r+dir,in.c+1) && viableLocation(in.r+dir*2,in.c+2))
+					out.push_back(in.move(in.r+dir*2,in.c+2,(in.r==6)));
+			}
+			else{
+				if (opponentLocation(in.r+1,in.c-1) && viableLocation(in.r+2,in.c-2))
+					out.push_back(in.move(in.r+2,in.c-2,false));
+				if (opponentLocation(in.r+1,in.c+1) && viableLocation(in.r+2,in.c+2))
+					out.push_back(in.move(in.r+2,in.c+2,false));
+				if (opponentLocation(in.r-1,in.c-1) && viableLocation(in.r-2,in.c-2))
+					out.push_back(in.move(in.r-2,in.c-2,false));
+				if (opponentLocation(in.r-1,in.c+1) && viableLocation(in.r-2,in.c+2))
+					out.push_back(in.move(in.r-2,in.c+2,false));
+			}
+		}
 		return out;
 	}
 
-	vector<Checker> viableMoves(Checker in){
-		vector<Checker> out=viableNonJumps(in);
-		vector<Checker> temp=viableJumps(in);
-		out.insert(out.end(),temp.begin(),temp.end());
-		return out;
+	bool viableLocation(int r, int c){
+		if(r>=0 && r<= 7 && c>=0 && c <= 7){
+			if(board[r][c].empty)
+				return true;
+		}
+		return false;
+	}
+	bool opponentLocation(int r, int c){
+		if(r>=0 && r<= 7 && c>=0 && c <= 7){
+			if((board[r][c].type/2)!=move)
+				return true;
+		}
+		return false;
 	}
 	public:
-		bool viableLocation(int r, int c){
-			if(r>=0 && r<= 7 && c>=0 && c <= 7){
-				if(board[r][c].empty)
-					return true;
-			}
-			return false;
-		}
+		
 		Checker_Board (vector<Checker> in_pieces, int in_move, array<array<Checker,8>,8> in_board){
 			pieces=in_pieces;
 			move=in_move;
@@ -133,13 +154,37 @@ class Checker_Board {
 			for (int i=0;i<pieces.size();i++){
 				vector <Checker> moves=viableMoves(pieces[i]);
 				//cout << pieces[i].toString() << " " << moves.size() << endl;
-				for (int j=0;j<moves.size();j++){
-					vector<Checker> pieces_copy=pieces;
-					array<array<Checker,8>,8> board_copy=board;
-					pieces_copy[i]=moves[j];
-					board_copy[pieces[i].r][pieces[i].c]=Checker();
-					board_copy[moves[j].r][moves[j].c]=moves[j].copy();
-					out.push_back(Checker_Board(pieces_copy,1-move,board_copy));
+				
+
+				vector<Checker> nonJumps=viableNonJumps(in);
+				vector<Checker> jumps=viableJumps(in);
+				if(jumps.size()>0){
+					//need to remove jumped over piece
+					for (int j=0;j<nonJumps.size();j++){
+						vector<Checker> pieces_copy=pieces;
+						array<array<Checker,8>,8> board_copy=board;
+						pieces_copy[i]=nonJumps[j];
+						board_copy[pieces[i].r][pieces[i].c]=Checker();
+						board_copy[nonJumps[j].r][nonJumps[j].c]=nonJumps[j].copy();
+						board_copy[(pieces[i].r+nonJumps[j].r)/2][(pieces[i].c+nonJumps[j].c)/2]=Checker();
+						for(int k=0;k<pieces_copy.size();k++){
+							if(pieces_copy[k].r==((pieces[i].r+nonJumps[j].r)/2) && pieces_copy[k].c==((pieces[i].c+nonJumps[j].c)/2)){
+								pieces_copy.erase(k);
+								break;
+							}
+						}
+						out.push_back(Checker_Board(pieces_copy,1-move,board_copy));
+					}
+				}
+				else{ 
+					for (int j=0;j<nonJumps.size();j++){
+						vector<Checker> pieces_copy=pieces;
+						array<array<Checker,8>,8> board_copy=board;
+						pieces_copy[i]=nonJumps[j];
+						board_copy[pieces[i].r][pieces[i].c]=Checker();
+						board_copy[nonJumps[j].r][nonJumps[j].c]=nonJumps[j].copy();
+						out.push_back(Checker_Board(pieces_copy,1-move,board_copy));
+					}
 				}
 			}
 			return out;
