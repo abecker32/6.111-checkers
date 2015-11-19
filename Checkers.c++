@@ -49,15 +49,19 @@ class Checker{
 		Checker copy(){
 			return Checker(type,r,c);
 		}
+		int val(){
+			array<int,4> vals={1,2,-1,-2};
+			return vals[type];
+		}
 };
 
 class Checker_Board {
 	vector<Checker> pieces;
-	int move;
+	
 	array<array<Checker,8>,8> board;
 	
 	public:
-
+		int move;
 		vector<Checker> viableNonJumps(Checker in){
 			vector<Checker> out;
 			if((in.type/2)==move){
@@ -128,6 +132,10 @@ class Checker_Board {
 			pieces=in_pieces;
 			move=in_move;
 			board=in_board;
+		}
+
+		Checker_Board(){
+
 		}
 
 		//returns a string that's a concatanation of all the piece descriptions
@@ -221,6 +229,15 @@ class Checker_Board {
 			move=1-move;
 		}
 
+		int eval(){
+			int out=0;
+			for(int i=0;i<pieces.size();i++){
+				out+=pieces[i].val();
+			}
+			//cout << "hello " << out << endl;
+			return out;
+		}
+
 
 };
 
@@ -246,13 +263,80 @@ Checker_Board make_new_board(){
 			}
 		}
 	}
+	
 	pieces.push_back(Checker(0,2,4));
 	out_board[2][4]=Checker(0,2,4);
 	pieces.push_back(Checker(2,1,3));
 	out_board[1][3]=Checker(2,1,3);
 	pieces.push_back(Checker(2,1,1));
 	out_board[1][1]=Checker(2,1,1);
+	
 	return Checker_Board(pieces,0,out_board);
+};
+
+class Player {
+	Checker_Board board;
+	int neg_inf;
+	int inf;
+	public:
+		Player (Checker_Board in_board){
+			board=in_board;
+			neg_inf=-100;
+			inf=100;
+		}
+		Checker_Board next_move(){
+			return best_move(10,board);
+		}
+		Checker_Board best_move(int depth, Checker_Board cur_board){
+			
+			if(cur_board.move==0){
+				vector<Checker_Board> moves=cur_board.getAllMoves();
+				Checker_Board out;
+				int max=neg_inf;
+				for (int i=0;i<moves.size();i++){
+					int score=alphaBeta(neg_inf,inf,depth-1,moves[i]);
+					//cout << score << endl;
+					if(score > max){
+						out=moves[i];
+						max=score;
+						//cout << "hi";
+					}
+				}
+				cout << max << endl;
+				return out;
+			}
+			else{
+				vector<Checker_Board> moves=cur_board.getAllMoves();
+				Checker_Board out;
+				int max=neg_inf;
+				for (int i=0;i<moves.size();i++){
+					int score=-alphaBeta(neg_inf,inf,depth-1,moves[i]);
+					if(score > max){
+						out=moves[i];
+						max=score;
+					}
+				}
+				return out;
+			}
+				
+
+		}
+		int alphaBeta( int alpha, int beta, int depthleft, Checker_Board cur_board ) {
+		   	if( depthleft == 0 ) 
+		   		return cur_board.eval();
+		   	vector<Checker_Board> moves=cur_board.getAllMoves();
+		   	if (moves.size()==0)
+		   		return inf*(cur_board.move*2-1);
+		   	for (int i=0;i<moves.size();i++)  {
+		      	int score = -alphaBeta( -beta, -alpha, depthleft - 1, moves[i] );
+		      	if( score >= beta )
+		         	return beta;   //  fail hard beta-cutoff
+		      	if( score > alpha )
+		         	alpha = score; // alpha acts like max in MiniMax
+		   	}
+		   	return alpha;
+		}
+
 };
 
 
@@ -260,12 +344,10 @@ Checker_Board make_new_board(){
 int main(){
 	Checker_Board new_board=make_new_board();
 	cout << new_board.printBoard() << endl << new_board.toString()<< endl;
-	//cout << new_board.viableLocation(4,3) << endl;
-	vector<Checker_Board> moves=new_board.getAllMoves();
 	
-	for (int i=0;i<moves.size();i++){
-		cout << moves[i].printBoard() << endl << moves[i].toString() << endl;
-	}
+	Player ai=Player(new_board);
+	Checker_Board next_move=ai.next_move();
+	cout << next_move.printBoard() << endl << next_move.toString()<< endl;
 	
 	return 0;
 }
