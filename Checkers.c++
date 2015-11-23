@@ -7,6 +7,7 @@
 #include <string>
 #include <array>
 #include <deque>
+#include <ctime>
 
 using namespace std;
 
@@ -185,6 +186,30 @@ class Checker_Board {
 			}
 			return out;
 		}
+
+		vector<Checker_Board> getAllJumps(){
+			vector<Checker_Board> out;
+			vector<Checker_Board> in;
+			in=getJumps();
+			
+			if(in.size()>0){
+				while(in.size()>0){
+					vector<Checker_Board> temp=in.back().getJumps();
+					
+					if(temp.size()>0){
+						in.pop_back();
+						in.insert(in.end(),temp.begin(),temp.end());
+					}
+					else{
+						out.push_back(in.back());
+						out.back().flipMove();
+						in.pop_back();
+					}
+					
+				}
+			}
+			return out;
+		}
 		//outputes a vector of boards where each one is a possible board configuration after one move
 		vector<Checker_Board> getAllMoves(){
 			vector<Checker_Board> out;
@@ -235,43 +260,14 @@ class Checker_Board {
 				out+=pieces[i].val();
 			}
 			//cout << "hello " << out << endl;
-			return out;
+			return -out*(move*2-1);
+		}
+
+		bool gameIsOver(){
+			return (getAllMoves().size()==0);
 		}
 
 
-};
-
-Checker_Board make_new_board(){
-	vector<Checker> pieces;
-	array<array<Checker,8>,8> out_board;
-	for (int i=0;i<8;i++){
-		for(int j=0;j<8;j++){
-			out_board[i][j]=Checker();
-		}
-	}
-	for( int i=0;i<8;i++){
-		for (int j=0;j<8;j++){
-			/*
-			if((i+j)%2==0 && i<3){
-				pieces.push_back(Checker(2,i,j));
-				out_board[i][j]=Checker(2,i,j);
-			}
-			*/
-			if ((i+j)%2==0 && i>4){
-				pieces.push_back(Checker(0,i,j));
-				out_board[i][j]=Checker(0,i,j);
-			}
-		}
-	}
-	
-	pieces.push_back(Checker(0,2,4));
-	out_board[2][4]=Checker(0,2,4);
-	pieces.push_back(Checker(2,1,3));
-	out_board[1][3]=Checker(2,1,3);
-	pieces.push_back(Checker(2,1,1));
-	out_board[1][1]=Checker(2,1,1);
-	
-	return Checker_Board(pieces,0,out_board);
 };
 
 class Player {
@@ -285,48 +281,39 @@ class Player {
 			inf=100;
 		}
 		Checker_Board next_move(){
-			return best_move(10,board);
+			return best_move(6,board);
 		}
 		Checker_Board best_move(int depth, Checker_Board cur_board){
 			
-			if(cur_board.move==0){
-				vector<Checker_Board> moves=cur_board.getAllMoves();
-				Checker_Board out;
-				int max=neg_inf;
-				for (int i=0;i<moves.size();i++){
-					int score=alphaBeta(neg_inf,inf,depth-1,moves[i]);
-					//cout << score << endl;
-					if(score > max){
-						out=moves[i];
-						max=score;
-						//cout << "hi";
-					}
+			
+			vector<Checker_Board> moves=cur_board.getAllMoves();
+			Checker_Board out;
+			int alpha=neg_inf;
+			int beta=inf;
+			for (int i=0;i<moves.size();i++){
+				int score=-alphaBeta(-beta,-alpha,depth-1,moves[i]);
+				if (score >= beta ){
+					return moves[i];
 				}
-				cout << max << endl;
-				return out;
-			}
-			else{
-				vector<Checker_Board> moves=cur_board.getAllMoves();
-				Checker_Board out;
-				int max=neg_inf;
-				for (int i=0;i<moves.size();i++){
-					int score=-alphaBeta(neg_inf,inf,depth-1,moves[i]);
-					if(score > max){
-						out=moves[i];
-						max=score;
-					}
+				else if(score > alpha){
+					out=moves[i];
+					alpha=score;
+					//cout << "hi";
 				}
-				return out;
 			}
+			cout << alpha << endl;
+			return out;
+			
+			
 				
 
 		}
 		int alphaBeta( int alpha, int beta, int depthleft, Checker_Board cur_board ) {
 		   	if( depthleft == 0 ) 
-		   		return cur_board.eval();
+		   		return quiesce(alpha,beta, cur_board);
 		   	vector<Checker_Board> moves=cur_board.getAllMoves();
 		   	if (moves.size()==0)
-		   		return inf*(cur_board.move*2-1);
+		   		return (inf-1)*(cur_board.move*2-1);
 		   	for (int i=0;i<moves.size();i++)  {
 		      	int score = -alphaBeta( -beta, -alpha, depthleft - 1, moves[i] );
 		      	if( score >= beta )
@@ -336,18 +323,93 @@ class Player {
 		   	}
 		   	return alpha;
 		}
+		void set_move(Checker_Board in_board){
+			board=in_board;
+		}
 
+		int quiesce(int alpha, int beta, Checker_Board cur_board){
+			int stand_pat=cur_board.eval();
+			if( stand_pat >= beta )
+		        return beta;
+		    else if( stand_pat > alpha )
+		        alpha = stand_pat;
+		    vector<Checker_Board> moves=cur_board.getAllJumps();
+		    for (int i=0;i<moves.size();i++)  {
+		    	int score = quiesce(-beta,-alpha, moves[i]);
+		    	if( score >= beta )
+		            return beta;
+		        else if( score > alpha )
+		           alpha = score;
+		   }
+		   return alpha;
+		}
+
+};
+
+
+Checker_Board make_new_board(){
+	vector<Checker> pieces;
+	array<array<Checker,8>,8> out_board;
+	for (int i=0;i<8;i++){
+		for(int j=0;j<8;j++){
+			out_board[i][j]=Checker();
+		}
+	}
+	for( int i=0;i<8;i++){
+		for (int j=0;j<8;j++){
+			
+			if((i+j)%2==0 && i<3){
+				pieces.push_back(Checker(2,i,j));
+				out_board[i][j]=Checker(2,i,j);
+			}
+			
+			else if ((i+j)%2==0 && i>4){
+				pieces.push_back(Checker(0,i,j));
+				out_board[i][j]=Checker(0,i,j);
+			}
+		}
+	}
+	/*
+	pieces.push_back(Checker(0,2,4));
+	out_board[2][4]=Checker(0,2,4);
+	pieces.push_back(Checker(2,1,3));
+	out_board[1][3]=Checker(2,1,3);
+	pieces.push_back(Checker(2,1,1));
+	out_board[1][1]=Checker(2,1,1);
+	*/
+	return Checker_Board(pieces,0,out_board);
 };
 
 
 
 int main(){
-	Checker_Board new_board=make_new_board();
-	cout << new_board.printBoard() << endl << new_board.toString()<< endl;
+	Checker_Board board=make_new_board();
+	cout << board.printBoard() << endl << board.toString()<< endl;
+	Player player_1=Player(board);
+	Player player_2=Player(board);
+	int move =1;
+	int counter=0;
+	clock_t start_time=clock();
+	while(board.gameIsOver()==false){
+		if((clock() - start_time) > CLOCKS_PER_SEC*counter/5){
+			cout << "player " << move << " to move" << endl;
+			if(move==1){
+				player_1.set_move(board);
+				board=player_1.next_move();
+				cout << board.printBoard() << endl << board.eval() << endl << board.toString()<< endl;
+				move=2;
+			}
+			else{
+				player_2.set_move(board);
+				board=player_2.next_move();
+				cout << board.printBoard() << endl << board.eval() << endl << board.toString()<< endl;
+				move=1;
+			}
+			counter++;
+		}
+
+	}
 	
-	Player ai=Player(new_board);
-	Checker_Board next_move=ai.next_move();
-	cout << next_move.printBoard() << endl << next_move.toString()<< endl;
 	
 	return 0;
 }
